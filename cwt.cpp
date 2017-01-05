@@ -49,16 +49,16 @@ struct Signal {
         }
     }
 
-    void gaborWavelet(double f0, double a) {
-
+    void gaborWavelet(double f0, double a = 5.5) {
+        a = 1.0/a;
         for(unsigned long i = 0; i < sampleCount/2; ++i) {
-            double f = i-f0;
-            frequencyDomain[i][0] = exp(-f*f*a);
+            double f = (i-f0)*a;
+            frequencyDomain[i][0] = exp(-f*f);
             frequencyDomain[i][1] = 0;
         }
         for(unsigned long i = sampleCount/2; i < sampleCount; ++i) {
-            double f = sampleCount-i+f0;
-            frequencyDomain[i][0] = exp(-f*f*a);
+            double f = (sampleCount-i+f0)*a;
+            frequencyDomain[i][0] = exp(-f*f);
             frequencyDomain[i][1] = 0;
         }
         toTimeDomain();
@@ -110,61 +110,66 @@ void writePixelHsv(unsigned char* pixel, double H, double S, double V) {
 }
 
 int main() {
-    unsigned long sampleCount = 256, frequencyCount = 256;
+    unsigned long width = 1280, height = 720;
 
-    Signal signal(sampleCount);
-    double border = 32;
-    for(unsigned long i = 0; i < sampleCount; ++i) {
-        double t = (double)i/(double)sampleCount*2*M_PI;
-        t *= pow(1.009, i);
+    Signal signal(width);
+    double border = 4;
+    for(unsigned long i = 0; i < width; ++i) {
+        double t = (double)i/(double)width*2*M_PI;
+        t *= 50.0*i/width;
         double a = 1.0;
         if(i < border)
             a *= i/border;
-        else if(i > sampleCount-border)
-            a *= (sampleCount-i)/border;
+        else if(i > width-border)
+            a *= (width-i)/border;
         signal.timeDomain[i][0] = a*cos(t);
         signal.timeDomain[i][1] = a*sin(t);
     }
     signal.toFrequencyDomain();
 
-    FILE* outputFile = fopen("out.png", "wb");
-    if(!outputFile) {
-        puts("Could not open output file");
-        return 1;
-    }
-    png_structp outputPng = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    png_infop outputPngInfo = png_create_info_struct(outputPng);
-    if(setjmp(png_jmpbuf(outputPng))) {
-        puts("Error during png encoding");
-        return 1;
-    }
-    png_init_io(outputPng, outputFile);
-    png_set_IHDR(outputPng, outputPngInfo, sampleCount, frequencyCount,
-                 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-                 PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
-    png_write_info(outputPng, outputPngInfo);
-    unsigned char* outputRow = (unsigned char*)malloc(sampleCount*3);
+    unsigned char* outputRow = (unsigned char*)malloc(width*3);
 
-    double frequency = 32.0;
-    for(unsigned int i = 0; i < frequencyCount; ++i) {
-        Signal kernel(sampleCount);
-        kernel.gaborWavelet(frequency, 0.1);
-        kernel.convolution(signal);
-        kernel.toTimeDomain();
-        frequency *= 0.99;
-
-        for(unsigned long i = 0; i < sampleCount; ++i) {
-            // writePixelHsv(&outputRow[i*3], 0, 0, fmin(abs(kernel.timeDomain[i]), 1.0)); // AmplitudeGrayscale
-            // writePixelHsv(&outputRow[i*3], 0, 0, 2*fabs(atan(kernel.timeDomain[i]))); // PhaseGrayscale
-            // writePixelHsv(&outputRow[i*3], fmin(abs(kernel.timeDomain[i])*0.9, 0.9), 1, 1); // Equipotential
-            writePixelHsv(&outputRow[i*3], atan(kernel.timeDomain[i])+0.5, 1, fmin(abs(kernel.timeDomain[i]), 1.0)); // Rainbow
+    for(int frequency = 0; frequency <= 100; frequency += 1) {
+        char buffer[64];
+        sprintf(buffer, "out/%03d.png", frequency);
+        FILE* outputFile = fopen(buffer, "wb");
+        if(!outputFile) {
+            puts("Could not open output file");
+            return 1;
         }
-        png_write_row(outputPng, outputRow);
+        png_structp outputPng = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        png_infop outputPngInfo = png_create_info_struct(outputPng);
+        if(setjmp(png_jmpbuf(outputPng))) {
+            puts("Error during png encoding");
+            return 1;
+        }
+        png_init_io(outputPng, outputFile);
+        png_set_IHDR(outputPng, outputPngInfo, width, height,
+                     8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+                     PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+        png_write_info(outputPng, outputPngInfo);
+
+        double a = 0.1;
+        for(unsigned int i = 0; i < height; ++i) {
+            Signal kernel(width);
+            kernel.gaborWavelet(frequency, a);
+            kernel.convolution(signal);
+            kernel.toTimeDomain();
+            a += 0.05;
+
+            for(unsigned long i = 0; i < width; ++i) {
+                // writePixelHsv(&outputRow[i*3], 0, 0, fmin(abs(kernel.timeDomain[i]), 1.0)); // AmplitudeGrayscale
+                // writePixelHsv(&outputRow[i*3], 0, 0, 2*fabs(atan(kernel.timeDomain[i]))); // PhaseGrayscale
+                // writePixelHsv(&outputRow[i*3], fmin(abs(kernel.timeDomain[i])*0.9, 0.9), 1, 1); // Equipotential
+                writePixelHsv(&outputRow[i*3], atan(kernel.timeDomain[i])+0.5, 1, fmin(abs(kernel.timeDomain[i]), 1.0)); // Rainbow
+            }
+            png_write_row(outputPng, outputRow);
+        }
+
+        png_write_end(outputPng, NULL);
+        fclose(outputFile);
     }
 
-    png_write_end(outputPng, NULL);
     free(outputRow);
-    fclose(outputFile);
-
     return 0;
 }
