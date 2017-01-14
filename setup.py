@@ -10,10 +10,10 @@ setup(
     description = 'Complex continuous wavelet transformation',
     author = 'Alexander Meißner',
     author_email = 'AlexanderMeissner@gmx.net',
-    url = '',
+    url = 'https://github.com/lichtso/ccwt',
     ext_modules = [Extension('ccwt',
-        include_dirs = [numpy.get_include()],
+        include_dirs = ['include', numpy.get_include()],
         libraries = ['fftw3', 'png'],
-        sources = ['ccwt.c']
+        sources = ['src/ccwt.c', 'src/render_png.c', 'src/python_api.c']
     )]
 )
