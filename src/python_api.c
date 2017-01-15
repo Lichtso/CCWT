@@ -6,22 +6,31 @@
 
 #define cleanup(method, var) if(var) method(var)
 
-static PyObject* ccwt_render_png_python_api(PyObject* self, PyObject* args) {
+int row_callback(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
+    complex double* array_data = (complex double*)user_data;
+    memcpy(&array_data[ccwt->width*row], &ccwt->output[ccwt->padding], ccwt->width*sizeof(complex double));
+    return 0;
+}
+
+static PyObject* python_api(PyObject* args, unsigned int mode) {
     char* path = NULL;
-    unsigned int rendering_mode = 0;
-    PyArrayObject *input_array = NULL;
+    FILE* file = NULL;
+    unsigned int return_value = 0, rendering_mode = 0;
+    PyArrayObject *input_array = NULL, *output_array = NULL;
     struct ccwt_data ccwt;
     ccwt.input = NULL;
     ccwt.output = NULL;
 
-    if(!PyArg_ParseTuple(args, "sO!iiidddd", &path, &PyArray_Type, &input_array, &ccwt.padding, &ccwt.height, &rendering_mode, &ccwt.frequency_scale, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation))
+    if(mode == 0) {
+        if(!PyArg_ParseTuple(args, "O!ddddiiis", &PyArray_Type, &input_array, &ccwt.frequency_scale, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height, &rendering_mode, &path))
+            return NULL;
+        file = fopen(path, "wb");
+        if(!file) {
+            PyErr_SetString(PyExc_IOError, "Could not open output file");
+            goto cleanup;
+        }
+    } else if(!PyArg_ParseTuple(args, "O!ddddii", &PyArray_Type, &input_array, &ccwt.frequency_scale, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height))
         return NULL;
-
-    FILE* file = fopen(path, "wb");
-    if(!file) {
-        PyErr_SetString(PyExc_IOError, "Could not open output file");
-        goto cleanup;
-    }
 
     if(PyArray_TYPE(input_array) != NPY_FLOAT64) {
         PyErr_SetString(PyExc_TypeError, "Expected first argument to be float64");
@@ -49,7 +58,17 @@ static PyObject* ccwt_render_png_python_api(PyObject* self, PyObject* args) {
     for(unsigned int i = ccwt.padding+ccwt.width; i < ccwt.sample_count; ++i)
         ccwt.input[i] = 0;
 
-    switch(ccwt_render_png(&ccwt, file, rendering_mode)) {
+    if(mode == 0)
+        return_value = ccwt_render_png(&ccwt, file, rendering_mode);
+    else {
+        long int dimensions[] = { ccwt.height, ccwt.width };
+        output_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dimensions, NPY_COMPLEX128, NULL, NULL, 0, 0, Py_None);
+        if(!output_array)
+            goto cleanup;
+        return_value = ccwt_calculate(&ccwt, PyArray_DATA(output_array), row_callback);
+    }
+
+    switch(return_value) {
         default:
             PyErr_SetNone(PyExc_StandardError);
             break;
@@ -60,15 +79,29 @@ static PyObject* ccwt_render_png_python_api(PyObject* self, PyObject* args) {
     }
 
     cleanup:
-    cleanup(fclose, file);
     cleanup(fftw_free, ccwt.input);
     cleanup(fftw_free, ccwt.output);
-    Py_INCREF(Py_None);
-    return Py_None;
+    if(mode == 0) {
+        cleanup(fclose, file);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        cleanup(Py_INCREF, output_array);
+        return (PyObject*)output_array;
+    }
+}
+
+static PyObject* render_png(PyObject* self, PyObject* args) {
+    return python_api(args, 0);
+}
+
+static PyObject* calculate(PyObject* self, PyObject* args) {
+    return python_api(args, 1);
 }
 
 static PyMethodDef python_methods[] = {
-    { "render_png", ccwt_render_png_python_api, METH_VARARGS, "Generate a PNG image as result" },
+    { "render_png", render_png, METH_VARARGS, "Generate a PNG image as result" },
+    { "calculate", calculate, METH_VARARGS, "Calculate 2D complex array as result" },
     { NULL, NULL, 0, NULL }
 };
 

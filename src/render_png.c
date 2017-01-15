@@ -34,7 +34,7 @@ void ccwt_render_png_pixel(unsigned char* pixel, double H, double S, double V) {
         instruction; \
     break
 
-int ccwt_render_png_row(struct ccwt_data* ccwt, void* user_data) {
+int ccwt_render_png_row(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     struct ccwt_render_png_data* render = (struct ccwt_render_png_data*)user_data;
     switch(render->mode) {
         case 0: // Real Grayscale

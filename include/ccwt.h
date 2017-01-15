@@ -11,5 +11,5 @@ struct ccwt_data {
 
 void convolve(unsigned int sample_count, complex double* signal, complex double* kernel);
 void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation);
-int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struct ccwt_data*, void*));
+int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struct ccwt_data*, void*, unsigned int));
 int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char mode);
