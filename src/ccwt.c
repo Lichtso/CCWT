@@ -31,7 +31,7 @@ int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struc
     int return_value = 0;
     fftw_execute(input_plan);
     for(unsigned int y = 0; y < ccwt->height && !return_value; ++y) {
-        double frequency = ccwt->frequency_scale*(1.0-(double)y/(ccwt->height-1))+ccwt->frequency_offset;
+        double frequency = ccwt->frequency_range*(1.0-(double)y/(ccwt->height-1))+ccwt->frequency_offset;
         if(ccwt->frequency_basis > 0.0)
             frequency = pow(ccwt->frequency_basis, frequency);
         gabor_wavelet(ccwt->sample_count, ccwt->output, frequency*ccwt->sample_count/ccwt->width, ccwt->deviation);

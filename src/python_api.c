@@ -22,14 +22,14 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     ccwt.output = NULL;
 
     if(mode == 0) {
-        if(!PyArg_ParseTuple(args, "O!ddddiiis", &PyArray_Type, &input_array, &ccwt.frequency_scale, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height, &rendering_mode, &path))
+        if(!PyArg_ParseTuple(args, "O!ddddiiis", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height, &rendering_mode, &path))
             return NULL;
         file = fopen(path, "wb");
         if(!file) {
             PyErr_SetString(PyExc_IOError, "Could not open output file");
             goto cleanup;
         }
-    } else if(!PyArg_ParseTuple(args, "O!ddddii", &PyArray_Type, &input_array, &ccwt.frequency_scale, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height))
+    } else if(!PyArg_ParseTuple(args, "O!ddddii", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height))
         return NULL;
 
     if(PyArray_TYPE(input_array) != NPY_FLOAT64) {

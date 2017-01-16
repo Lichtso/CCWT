@@ -6,7 +6,7 @@
 struct ccwt_data {
     complex double *input, *output;
     unsigned int sample_count, padding, width, height;
-    double frequency_scale, frequency_offset, frequency_basis, deviation;
+    double frequency_range, frequency_offset, frequency_basis, deviation;
 };
 
 void convolve(unsigned int sample_count, complex double* signal, complex double* kernel);
