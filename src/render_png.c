@@ -44,10 +44,10 @@ int ccwt_render_png_row(struct ccwt_data* ccwt, void* user_data, unsigned int ro
         case 2: // Amplitude Grayscale
         ccwt_render_png_row_case(render->row[x] = fmin(cabs(ccwt->output[ccwt->padding+x]), 1.0)*max_color_factor);
         case 3: // Phase Grayscale
-        ccwt_render_png_row_case(render->row[x] = 2.0*fabs(carg(ccwt->output[ccwt->padding+x])/M_PI)*max_color_factor);
+        ccwt_render_png_row_case(render->row[x] = fabs(carg(ccwt->output[ccwt->padding+x])/M_PI)*max_color_factor);
         case 4: // Equipotential
         ccwt_render_png_row_case(ccwt_render_png_pixel(&render->row[x*3], fmin(cabs(ccwt->output[ccwt->padding+x])*0.9, 0.9), 1.0, 1.0));
-        case 5: // Rainbow
+        case 5: // Rainbow Wallpaper
         ccwt_render_png_row_case(ccwt_render_png_pixel(&render->row[x*3], carg(ccwt->output[ccwt->padding+x])/(2*M_PI)+0.5, 1.0, fmin(cabs(ccwt->output[ccwt->padding+x]), 1.0)));
     }
     png_write_row(render->png, render->row);
