@@ -1,11 +1,7 @@
 #include <ccwt.h>
 #include <fftw3.h>
 
-#if PY_MAJOR_VERSION >= 3
-#include <python3.5/Python.h>
-#else
-#include <python2.7/Python.h>
-#endif
+#include <Python.h>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
@@ -110,16 +106,23 @@ static struct PyMethodDef module_methods[] = {
     { NULL, NULL, 0, NULL }
 };
 
-const char* module_name = "ccwt";
+#define module_name ccwt
+
+#define concat2(a, b) a##b
+#define concat(a, b) concat2(a, b)
+#define str(in) #in
 #if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT, module_name, "", -1, module_methods
+    PyModuleDef_HEAD_INIT, str(module_name), "", -1, module_methods
 };
-PyMODINIT_FUNC PyInit_ccwt() {
-    PyModule_Create(&module_definition);
+#define module_init PyInit_
+#define module_create(module_name) return PyModule_Create(&module_definition)
 #else
-PyMODINIT_FUNC initccwt() {
-    Py_InitModule(module_name, module_methods);
+#define module_init init
+#define module_create(module_name) Py_InitModule(str(module_name), module_methods)
 #endif
+
+PyMODINIT_FUNC concat(module_init, module_name) (void) {
     import_array();
+    module_create(module_name);
 }
