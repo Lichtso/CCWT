@@ -1,7 +1,12 @@
 #include <ccwt.h>
 #include <fftw3.h>
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+
+#if PY_MAJOR_VERSION >= 3
+#include <python3.5/Python.h>
+#else
 #include <python2.7/Python.h>
+#endif
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
 #define cleanup(method, var) if(var) method(var)
@@ -70,7 +75,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
 
     switch(return_value) {
         default:
-            PyErr_SetNone(PyExc_StandardError);
+            PyErr_SetNone(PyExc_Exception);
             break;
         case -1:
             PyErr_SetNone(PyExc_MemoryError);
@@ -99,13 +104,22 @@ static PyObject* calculate(PyObject* self, PyObject* args) {
     return python_api(args, 1);
 }
 
-static PyMethodDef python_methods[] = {
+static struct PyMethodDef module_methods[] = {
     { "render_png", render_png, METH_VARARGS, "Generate a PNG image as result" },
     { "calculate", calculate, METH_VARARGS, "Calculate 2D complex array as result" },
     { NULL, NULL, 0, NULL }
 };
 
+const char* module_name = "ccwt";
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef module_definition = {
+    PyModuleDef_HEAD_INIT, module_name, "", -1, module_methods
+};
+PyMODINIT_FUNC PyInit_ccwt() {
+    PyModule_Create(&module_definition);
+#else
 PyMODINIT_FUNC initccwt() {
-    Py_InitModule("ccwt", python_methods);
+    Py_InitModule(module_name, module_methods);
+#endif
     import_array();
 }

@@ -1,7 +1,7 @@
 # CCWT library for Python
 Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Continuous_wavelet_transform)
 - with a [gabor wavelet](https://en.wikipedia.org/wiki/Gabor_wavelet)
-- interfaces for C and python
+- interfaces for C, python2.7 and python3.5
 - using [libFFTW](http://www.fftw.org) for performance
 - and [libPNG](http://www.libpng.org/pub/png/libpng.html) as possible output
 
