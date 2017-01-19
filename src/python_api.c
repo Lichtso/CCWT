@@ -6,6 +6,11 @@
 #include <numpy/arrayobject.h>
 
 #define cleanup(method, var) if(var) method(var)
+#define python_api_case(python_type, c_type) \
+    case python_type: \
+    for(unsigned int i = 0; i < ccwt.width; ++i) \
+        ccwt.input[ccwt.padding+i] = ((c_type*)PyArray_DATA(input_array))[i]; \
+    break
 
 int row_callback(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     complex double* array_data = (complex double*)user_data;
@@ -33,11 +38,6 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     } else if(!PyArg_ParseTuple(args, "O!ddddii", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height))
         return NULL;
 
-    if(PyArray_TYPE(input_array) != NPY_FLOAT64) {
-        PyErr_SetString(PyExc_TypeError, "Expected first argument to be float64");
-        goto cleanup;
-    }
-
     if(PyArray_NDIM(input_array) != 1) {
         PyErr_SetString(PyExc_TypeError, "Expected first argument to have one dimension");
         goto cleanup;
@@ -52,10 +52,17 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         goto cleanup;
     }
 
+    switch(PyArray_TYPE(input_array)) {
+        python_api_case(NPY_FLOAT32, float);
+        python_api_case(NPY_FLOAT64, double);
+        python_api_case(NPY_COMPLEX64, complex float);
+        python_api_case(NPY_COMPLEX128, complex double);
+        default:
+            PyErr_SetString(PyExc_TypeError, "Expected first argument to be one of: float32, float64, complex64, complex128");
+            goto cleanup;
+    }
     for(unsigned int i = 0; i < ccwt.padding; ++i)
         ccwt.input[i] = 0;
-    for(unsigned int i = 0; i < ccwt.width; ++i)
-        ccwt.input[ccwt.padding+i] = ((double*)PyArray_DATA(input_array))[i];
     for(unsigned int i = ccwt.padding+ccwt.width; i < ccwt.sample_count; ++i)
         ccwt.input[i] = 0;
 
