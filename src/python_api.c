@@ -5,7 +5,6 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
-#define cleanup(method, var) if(var) method(var)
 #define python_api_case(python_type, c_type) \
     case python_type: \
     for(unsigned int i = 0; i < ccwt.width; ++i) \
@@ -24,8 +23,6 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     unsigned int return_value = 0, rendering_mode = 0;
     PyArrayObject *input_array = NULL, *output_array = NULL;
     struct ccwt_data ccwt;
-    ccwt.input = NULL;
-    ccwt.output = NULL;
 
     if(mode == 0) {
         if(!PyArg_ParseTuple(args, "O!ddddiiis", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height, &rendering_mode, &path))
@@ -43,11 +40,8 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         goto cleanup;
     }
 
-    ccwt.width = (unsigned int)PyArray_DIM(input_array, 0);
-    ccwt.sample_count = 2*ccwt.padding+ccwt.width;
-    ccwt.input = (complex double*)fftw_malloc(sizeof(complex double)*ccwt.sample_count);
-    ccwt.output = (complex double*)fftw_malloc(sizeof(complex double)*ccwt.sample_count);
-    if(!ccwt.input || !ccwt.output) {
+    ccwt.width = ccwt.sample_count = (unsigned int)PyArray_DIM(input_array, 0);
+    if(ccwt_init(&ccwt) != 0) {
         PyErr_SetNone(PyExc_MemoryError);
         goto cleanup;
     }
@@ -61,10 +55,6 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
             PyErr_SetString(PyExc_TypeError, "Expected first argument to be one of: float32, float64, complex64, complex128");
             goto cleanup;
     }
-    for(unsigned int i = 0; i < ccwt.padding; ++i)
-        ccwt.input[i] = 0;
-    for(unsigned int i = ccwt.padding+ccwt.width; i < ccwt.sample_count; ++i)
-        ccwt.input[i] = 0;
 
     if(mode == 0)
         return_value = ccwt_render_png(&ccwt, file, rendering_mode);
@@ -87,14 +77,16 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     }
 
     cleanup:
-    cleanup(fftw_free, ccwt.input);
-    cleanup(fftw_free, ccwt.output);
+    ccwt_cleanup(&ccwt);
     if(mode == 0) {
-        cleanup(fclose, file);
+        if(file)
+            fclose(file);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        cleanup(Py_INCREF, output_array);
+        if(!output_array)
+            return NULL;
+        Py_INCREF(output_array);
         return (PyObject*)output_array;
     }
 }
