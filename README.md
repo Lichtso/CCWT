@@ -1,7 +1,7 @@
-# CCWT library for Python
+# CCWT library for C and Python
 Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Continuous_wavelet_transform)
 - with a [gabor wavelet](https://en.wikipedia.org/wiki/Gabor_wavelet)
-- interfaces for C, python2.7 and python3.5
+- interfaces for C99, python2.7 and python3.5
 - using [libFFTW](http://www.fftw.org) for performance
 - and [libPNG](http://www.libpng.org/pub/png/libpng.html) as possible output
 
@@ -44,6 +44,7 @@ for mode in range(0, 6):
 - frequency_basis: Values > 0 switch from a linear to an exponential frequency scale using this as basis
 - deviation: Values near 0 have better frequency resolution, values towards infinity have better time resolution
 - padding: Zero samples to be virtually added at each end of the input signal
+- width: Width of the resulting image in pixels, this can be the input sample count or lower for downsampling
 - height: Height of the resulting image in pixels, this is also the number of frequencies to analyze
 
 ### ccwt.render_png()

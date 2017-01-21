@@ -7,13 +7,13 @@
 
 #define python_api_case(python_type, c_type) \
     case python_type: \
-    for(unsigned int i = 0; i < ccwt.width; ++i) \
-        ccwt.input[ccwt.padding+i] = ((c_type*)PyArray_DATA(input_array))[i]; \
+    for(unsigned int i = 0; i < ccwt.input_width; ++i) \
+        ccwt.input[ccwt.input_padding+i] = ((c_type*)PyArray_DATA(input_array))[i]; \
     break
 
 int row_callback(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     complex double* array_data = (complex double*)user_data;
-    memcpy(&array_data[ccwt->width*row], &ccwt->output[ccwt->padding], ccwt->width*sizeof(complex double));
+    memcpy(&array_data[ccwt->output_width*row], &ccwt->output[ccwt->output_padding], ccwt->output_width*sizeof(complex double));
     return 0;
 }
 
@@ -25,14 +25,14 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     struct ccwt_data ccwt;
 
     if(mode == 0) {
-        if(!PyArg_ParseTuple(args, "O!ddddiiis", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height, &rendering_mode, &path))
+        if(!PyArg_ParseTuple(args, "O!ddddiiiis", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.input_padding, &ccwt.output_width, &ccwt.height, &rendering_mode, &path))
             return NULL;
         file = fopen(path, "wb");
         if(!file) {
             PyErr_SetString(PyExc_IOError, "Could not open output file");
             goto cleanup;
         }
-    } else if(!PyArg_ParseTuple(args, "O!ddddii", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.padding, &ccwt.height))
+    } else if(!PyArg_ParseTuple(args, "O!ddddiii", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.input_padding, &ccwt.output_width, &ccwt.height))
         return NULL;
 
     if(PyArray_NDIM(input_array) != 1) {
@@ -40,9 +40,13 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         goto cleanup;
     }
 
-    ccwt.width = ccwt.sample_count = (unsigned int)PyArray_DIM(input_array, 0);
+    ccwt.input_width = (unsigned int)PyArray_DIM(input_array, 0);
     if(ccwt_init(&ccwt) != 0) {
         PyErr_SetNone(PyExc_MemoryError);
+        goto cleanup;
+    }
+    if(ccwt.output_width > ccwt.input_width) {
+        PyErr_SetString(PyExc_ValueError, "Upsampling is not supported");
         goto cleanup;
     }
 
@@ -59,7 +63,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     if(mode == 0)
         return_value = ccwt_render_png(&ccwt, file, rendering_mode);
     else {
-        long int dimensions[] = { ccwt.height, ccwt.width };
+        long int dimensions[] = { ccwt.height, ccwt.output_width };
         output_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dimensions, NPY_COMPLEX128, NULL, NULL, 0, 0, Py_None);
         if(!output_array)
             goto cleanup;
