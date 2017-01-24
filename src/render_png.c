@@ -34,15 +34,17 @@ void ccwt_render_png_pixel(unsigned char* pixel, double H, double S, double V) {
         instruction; \
     break
 
+#define clamp_and_scale(value) fmin(fmax(0.0, value), 1.0)*max_color_factor
+
 int ccwt_render_png_row(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     struct ccwt_render_png_data* render = (struct ccwt_render_png_data*)user_data;
     switch(render->mode) {
         case 0: // Real Grayscale
-            ccwt_render_png_row_case(render->row[x] = fmin(0.5+0.5*creal(ccwt->output[ccwt->output_padding+x]), 1.0)*max_color_factor);
+            ccwt_render_png_row_case(render->row[x] = clamp_and_scale(0.5+0.5*creal(ccwt->output[ccwt->output_padding+x])));
         case 1: // Imaginary Grayscale
-            ccwt_render_png_row_case(render->row[x] = fmin(0.5+0.5*cimag(ccwt->output[ccwt->output_padding+x]), 1.0)*max_color_factor);
+            ccwt_render_png_row_case(render->row[x] = clamp_and_scale(0.5+0.5*cimag(ccwt->output[ccwt->output_padding+x])));
         case 2: // Amplitude Grayscale
-            ccwt_render_png_row_case(render->row[x] = fmin(cabs(ccwt->output[ccwt->output_padding+x]), 1.0)*max_color_factor);
+            ccwt_render_png_row_case(render->row[x] = clamp_and_scale(cabs(ccwt->output[ccwt->output_padding+x])));
         case 3: // Phase Grayscale
             ccwt_render_png_row_case(render->row[x] = fabs(carg(ccwt->output[ccwt->output_padding+x])/M_PI)*max_color_factor);
         case 4: // Equipotential

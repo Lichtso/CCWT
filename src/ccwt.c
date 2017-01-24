@@ -20,9 +20,14 @@ void convolve(unsigned int sample_count, complex double* signal, complex double*
 }
 
 void downsample(unsigned int dst_sample_count, unsigned int src_sample_count, complex double* signal) {
-    if(dst_sample_count < src_sample_count)
-        for(unsigned int i = dst_sample_count; i < src_sample_count; ++i)
-            signal[i%dst_sample_count] += signal[i];
+    if(dst_sample_count >= src_sample_count)
+        return;
+    unsigned int rest = src_sample_count%dst_sample_count, cut_index = src_sample_count-rest;
+    for(unsigned int chunk_index = dst_sample_count; chunk_index < cut_index; chunk_index += dst_sample_count)
+        for(unsigned int i = 0; i < dst_sample_count; ++i)
+            signal[i] += signal[chunk_index+i];
+    for(unsigned int i = 0; i < rest; ++i)
+        signal[i] += signal[cut_index+i];
 }
 
 int ccwt_init(struct ccwt_data* ccwt) {
