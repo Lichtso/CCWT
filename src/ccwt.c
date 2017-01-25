@@ -2,7 +2,7 @@
 #include <fftw3.h>
 
 void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation) {
-    deviation = 1.0/deviation;
+    deviation = 1.0/sqrt(deviation);
     for(unsigned int i = 0; i < sample_count/2+1; ++i) {
         double f = (i-center_frequency)*deviation;
         kernel[i] = exp(-f*f);
@@ -58,10 +58,17 @@ int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struc
     int return_value = 0;
     fftw_execute(ccwt->input_plan);
     for(unsigned int y = 0; y < ccwt->height && !return_value; ++y) {
-        double frequency = ccwt->frequency_range*(1.0-(double)y/(ccwt->height-1))+ccwt->frequency_offset;
-        if(ccwt->frequency_basis > 0.0)
+        double frequency = ccwt->frequency_range*(1.0-(double)y/ccwt->height)+ccwt->frequency_offset,
+               frequency_derivative = ccwt->frequency_range/ccwt->height;
+        if(ccwt->frequency_basis > 0.0) {
             frequency = pow(ccwt->frequency_basis, frequency);
-        gabor_wavelet(ccwt->input_sample_count, ccwt->output, frequency*ccwt->padding_correction, ccwt->deviation);
+            frequency_derivative *= log(ccwt->frequency_basis)*frequency;
+        }
+        gabor_wavelet(
+            ccwt->input_sample_count, ccwt->output,
+            frequency*ccwt->padding_correction,
+            ccwt->deviation*ccwt->output_sample_count*frequency_derivative*ccwt->padding_correction
+        );
         convolve(ccwt->input_sample_count, ccwt->output, ccwt->input);
         downsample(ccwt->output_sample_count, ccwt->input_sample_count, ccwt->output);
         fftw_execute(ccwt->output_plan);

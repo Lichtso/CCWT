@@ -11,14 +11,12 @@ Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Contin
 ```python
 import ccwt, numpy, math
 
-frequency_range = 128.0
-frequency_offset = 0.0
-frequency_basis = 0.0
-deviation = 5.5
-padding = 64
 height = 512
 width = 512
 border = 64
+frequency_range = 0.25*height
+frequency_offset = 0.0
+frequency_basis = 0.0
 
 def generateWave(frequency_range, frequency_offset):
     phases = numpy.zeros(width)
@@ -31,7 +29,7 @@ def generateWave(frequency_range, frequency_offset):
 
 wave = generateWave(frequency_range*0.5, 0.0)+generateWave(0.0, frequency_range*0.09375)+generateWave(0.0, frequency_range*(1.0-0.09375))
 for mode in range(0, 6):
-    ccwt.render_png(wave, frequency_range, frequency_offset, frequency_basis, deviation, padding, height, mode, 'gallery/rendering_mode_'+str(mode)+'.png')
+    ccwt.render_png(wave, frequency_range, frequency_offset, frequency_basis, math.e/(math.pi*math.pi), 0, width, height, mode, 'gallery/rendering_mode_'+str(mode)+'.png')
 ```
 
 
