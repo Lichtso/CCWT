@@ -13,8 +13,6 @@ struct ccwt_data {
 };
 
 void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation);
-void convolve(unsigned int sample_count, complex double* signal, complex double* kernel);
-void downsample(unsigned int dst_sample_count, unsigned int src_sample_count, complex double* signal);
 int ccwt_init(struct ccwt_data* ccwt);
 int ccwt_cleanup(struct ccwt_data* ccwt);
 int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struct ccwt_data*, void*, unsigned int));

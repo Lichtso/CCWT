@@ -1,33 +1,30 @@
 #include <ccwt.h>
 #include <fftw3.h>
+#include <math.h>
 
 void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation) {
     deviation = 1.0/sqrt(deviation);
-    for(unsigned int i = 0; i < sample_count/2+1; ++i) {
-        double f = (i-center_frequency)*deviation;
-        kernel[i] = exp(-f*f);
-    }
-    for(unsigned int i = sample_count/2+1; i < sample_count; ++i) {
-        double f = (sample_count-i+center_frequency)*deviation;
+    unsigned int half_sample_count = sample_count>>1;
+    for(unsigned int i = 0; i < sample_count; ++i) {
+        double f = fabs(i-center_frequency);
+        f = half_sample_count-fabs(f-half_sample_count);
+        f *= deviation;
         kernel[i] = exp(-f*f);
     }
 }
 
-void convolve(unsigned int sample_count, complex double* signal, complex double* kernel) {
-    double scaleFactor = 1.0/(double)sample_count;
-    for(unsigned int i = 0; i < sample_count; ++i)
-        signal[i] *= kernel[i]*scaleFactor;
-}
-
-void downsample(unsigned int dst_sample_count, unsigned int src_sample_count, complex double* signal) {
+void convolve_and_downsample(unsigned int dst_sample_count, unsigned int src_sample_count, complex double* dst, complex double* src) {
+    double scaleFactor = 1.0/(double)src_sample_count;
+    for(unsigned int i = 0; i < dst_sample_count; ++i)
+        dst[i] = dst[i]*src[i]*scaleFactor;
     if(dst_sample_count >= src_sample_count)
         return;
     unsigned int rest = src_sample_count%dst_sample_count, cut_index = src_sample_count-rest;
     for(unsigned int chunk_index = dst_sample_count; chunk_index < cut_index; chunk_index += dst_sample_count)
         for(unsigned int i = 0; i < dst_sample_count; ++i)
-            signal[i] += signal[chunk_index+i];
+            dst[i] += dst[chunk_index+i]*src[chunk_index+i]*scaleFactor;
     for(unsigned int i = 0; i < rest; ++i)
-        signal[i] += signal[cut_index+i];
+        dst[i] += dst[cut_index+i]*src[cut_index+i]*scaleFactor;
 }
 
 int ccwt_init(struct ccwt_data* ccwt) {
@@ -69,8 +66,7 @@ int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struc
             frequency*ccwt->padding_correction,
             ccwt->deviation*ccwt->output_sample_count*frequency_derivative*ccwt->padding_correction
         );
-        convolve(ccwt->input_sample_count, ccwt->output, ccwt->input);
-        downsample(ccwt->output_sample_count, ccwt->input_sample_count, ccwt->output);
+        convolve_and_downsample(ccwt->output_sample_count, ccwt->input_sample_count, ccwt->output, ccwt->input);
         fftw_execute(ccwt->output_plan);
         return_value = callback(ccwt, user_data, y);
     }
