@@ -17,36 +17,74 @@ int row_callback(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     return 0;
 }
 
+static PyObject* generate_frequencies(PyObject* self, PyObject* args) {
+    unsigned int frequencies_count;
+    double frequency_range = 0.0, frequency_offset = 0.0, frequency_basis = 0.0, deviation = M_E/(M_PI*M_PI);
+
+    if(!PyArg_ParseTuple(args, "i|dddd", &frequencies_count, &frequency_range, &frequency_offset, &frequency_basis, &deviation))
+        return NULL;
+
+    long int dimensions[] = { frequencies_count, 2 };
+    PyArrayObject* frequencies = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dimensions, NPY_FLOAT64, NULL, NULL, 0, 0, Py_None);
+    if(!frequencies)
+        return NULL;
+
+    ccwt_generate_frequencies((double*)PyArray_DATA(frequencies), frequencies_count, frequency_range, frequency_offset, frequency_basis, deviation);
+
+    Py_INCREF(frequencies);
+    return (PyObject*)frequencies;
+}
+
 static PyObject* python_api(PyObject* args, unsigned int mode) {
     char* path = NULL;
     FILE* file = NULL;
-    unsigned int return_value = 0, rendering_mode = 0;
-    PyArrayObject *input_array = NULL, *output_array = NULL;
+    unsigned int return_value = 0, rendering_mode;
+    PyArrayObject *input_array = NULL, *output_array = NULL, *frequencies = NULL;
     struct ccwt_data ccwt;
+    ccwt.output_width = 0;
+    ccwt.input_padding = 0;
 
     if(mode == 0) {
-        if(!PyArg_ParseTuple(args, "O!ddddiiiis", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.input_padding, &ccwt.output_width, &ccwt.height, &rendering_mode, &path))
+        if(!PyArg_ParseTuple(args, "O!O!|ii", &PyArray_Type, &input_array, &PyArray_Type, &frequencies, &ccwt.output_width, &ccwt.input_padding))
+            return NULL;
+    } else {
+        if(!PyArg_ParseTuple(args, "siO!O!|ii", &path, &rendering_mode, &PyArray_Type, &input_array, &PyArray_Type, &frequencies, &ccwt.output_width, &ccwt.input_padding))
             return NULL;
         file = fopen(path, "wb");
         if(!file) {
             PyErr_SetString(PyExc_IOError, "Could not open output file");
             goto cleanup;
         }
-    } else if(!PyArg_ParseTuple(args, "O!ddddiii", &PyArray_Type, &input_array, &ccwt.frequency_range, &ccwt.frequency_offset, &ccwt.frequency_basis, &ccwt.deviation, &ccwt.input_padding, &ccwt.output_width, &ccwt.height))
-        return NULL;
+    }
 
     if(PyArray_NDIM(input_array) != 1) {
-        PyErr_SetString(PyExc_TypeError, "Expected first argument to have one dimension");
+        PyErr_SetString(PyExc_TypeError, "Expected first argument to have exactly one dimension");
         goto cleanup;
     }
 
-    ccwt.input_width = (unsigned int)PyArray_DIM(input_array, 0);
-    if(ccwt_init(&ccwt) != 0) {
-        PyErr_SetNone(PyExc_MemoryError);
+    if(PyArray_NDIM(frequencies) != 2) {
+        PyErr_SetString(PyExc_TypeError, "Expected second argument to have exactly two dimensions");
         goto cleanup;
     }
-    if(ccwt.output_width > ccwt.input_width) {
+
+    if(PyArray_TYPE(frequencies) != NPY_FLOAT64) {
+        PyErr_SetString(PyExc_TypeError, "Expected second argument to be an array of float64");
+        goto cleanup;
+    }
+
+    ccwt.frequencies = (double*)PyArray_DATA(frequencies);
+    ccwt.input_width = (unsigned int)PyArray_DIM(input_array, 0);
+    ccwt.height = (unsigned int)PyArray_DIM(frequencies, 0);
+
+    if(ccwt.output_width == 0)
+        ccwt.output_width = ccwt.input_width;
+    else if(ccwt.output_width > ccwt.input_width) {
         PyErr_SetString(PyExc_ValueError, "Upsampling is not supported");
+        goto cleanup;
+    }
+
+    if(ccwt_init(&ccwt) != 0) {
+        PyErr_SetNone(PyExc_MemoryError);
         goto cleanup;
     }
 
@@ -56,19 +94,18 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         python_api_case(NPY_COMPLEX64, complex float);
         python_api_case(NPY_COMPLEX128, complex double);
         default:
-            PyErr_SetString(PyExc_TypeError, "Expected first argument to be one of: float32, float64, complex64, complex128");
+            PyErr_SetString(PyExc_TypeError, "Expected first argument to be an array of: float32, float64, complex64 or complex128");
             goto cleanup;
     }
 
-    if(mode == 0)
-        return_value = ccwt_render_png(&ccwt, file, rendering_mode);
-    else {
+    if(mode == 0) {
         long int dimensions[] = { ccwt.height, ccwt.output_width };
         output_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dimensions, NPY_COMPLEX128, NULL, NULL, 0, 0, Py_None);
         if(!output_array)
             goto cleanup;
         return_value = ccwt_calculate(&ccwt, PyArray_DATA(output_array), row_callback);
-    }
+    } else
+        return_value = ccwt_render_png(&ccwt, file, rendering_mode);
 
     switch(return_value) {
         default:
@@ -83,29 +120,30 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     cleanup:
     ccwt_cleanup(&ccwt);
     if(mode == 0) {
-        if(file)
-            fclose(file);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
         if(!output_array)
             return NULL;
         Py_INCREF(output_array);
         return (PyObject*)output_array;
+    } else {
+        if(file)
+            fclose(file);
+        Py_INCREF(Py_None);
+        return Py_None;
     }
 }
 
-static PyObject* render_png(PyObject* self, PyObject* args) {
+static PyObject* calculate(PyObject* self, PyObject* args) {
     return python_api(args, 0);
 }
 
-static PyObject* calculate(PyObject* self, PyObject* args) {
+static PyObject* render_png(PyObject* self, PyObject* args) {
     return python_api(args, 1);
 }
 
 static struct PyMethodDef module_methods[] = {
-    { "render_png", render_png, METH_VARARGS, "Generate a PNG image as result" },
+    { "generate_frequencies", generate_frequencies, METH_VARARGS, "Generate a frequency band" },
     { "calculate", calculate, METH_VARARGS, "Calculate 2D complex array as result" },
+    { "render_png", render_png, METH_VARARGS, "Generate a PNG image as result" },
     { NULL, NULL, 0, NULL }
 };
 

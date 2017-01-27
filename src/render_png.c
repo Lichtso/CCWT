@@ -74,7 +74,7 @@ int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char mode) {
     }
     png_init_io(render.png, file);
     png_set_IHDR(render.png, render.png_info, ccwt->output_width, ccwt->height,
-                 8, (render.mode < 4) ? PNG_COLOR_TYPE_GRAY: PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+                 8, (render.mode < 4) ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(render.png, render.png_info);
     int return_value = ccwt_calculate(ccwt, &render, ccwt_render_png_row);

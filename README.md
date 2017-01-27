@@ -4,6 +4,7 @@ Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Contin
 - interfaces for C99, python2.7 and python3.5
 - using [libFFTW](http://www.fftw.org) for performance
 - and [libPNG](http://www.libpng.org/pub/png/libpng.html) as possible output
+- customizable frequency bands as well as linear and exponential helper methods
 
 
 ## Example
@@ -14,9 +15,6 @@ import ccwt, numpy, math
 height = 512
 width = 512
 border = 64
-frequency_range = 0.25*height
-frequency_offset = 0.0
-frequency_basis = 0.0
 
 def generateWave(frequency_range, frequency_offset):
     phases = numpy.zeros(width)
@@ -27,9 +25,12 @@ def generateWave(frequency_range, frequency_offset):
         wave[t] *= (t > border) and (t < width-border)
     return wave
 
+frequency_range = height*0.25
+frequencies = ccwt.generate_frequencies(height, frequency_range)
 wave = generateWave(frequency_range*0.5, 0.0)+generateWave(0.0, frequency_range*0.09375)+generateWave(0.0, frequency_range*(1.0-0.09375))
+
 for mode in range(0, 6):
-    ccwt.render_png(wave, frequency_range, frequency_offset, frequency_basis, math.e/(math.pi*math.pi), 0, width, height, mode, 'gallery/rendering_mode_'+str(mode)+'.png')
+    ccwt.render_png('gallery/rendering_mode_'+str(mode)+'.png', mode, wave, frequencies)
 ```
 
 
