@@ -39,17 +39,17 @@ void ccwt_render_png_pixel(unsigned char* pixel, double H, double S, double V) {
 int ccwt_render_png_row(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     struct ccwt_render_png_data* render = (struct ccwt_render_png_data*)user_data;
     switch(render->mode) {
-        case 0: // Real Grayscale
+        case REAL_GRAYSCALE:
             ccwt_render_png_row_case(render->row[x] = clamp_and_scale(0.5+0.5*creal(ccwt->output[ccwt->output_padding+x])));
-        case 1: // Imaginary Grayscale
+        case IMAGINARY_GRAYSCALE:
             ccwt_render_png_row_case(render->row[x] = clamp_and_scale(0.5+0.5*cimag(ccwt->output[ccwt->output_padding+x])));
-        case 2: // Amplitude Grayscale
+        case AMPLITUDE_GRAYSCALE:
             ccwt_render_png_row_case(render->row[x] = clamp_and_scale(cabs(ccwt->output[ccwt->output_padding+x])));
-        case 3: // Phase Grayscale
+        case PHASE_GRAYSCALE:
             ccwt_render_png_row_case(render->row[x] = fabs(carg(ccwt->output[ccwt->output_padding+x])/M_PI)*max_color_factor);
-        case 4: // Equipotential
+        case EQUIPOTENTIAL:
             ccwt_render_png_row_case(ccwt_render_png_pixel(&render->row[x*3], fmin(cabs(ccwt->output[ccwt->output_padding+x])*0.9, 0.9), 1.0, 1.0));
-        case 5: // Rainbow Wallpaper
+        case RAINBOW_WALLPAPER:
             ccwt_render_png_row_case(ccwt_render_png_pixel(&render->row[x*3],
                 carg(ccwt->output[ccwt->output_padding+x])/(2*M_PI)+0.5, 1.0,
                 fmin(cabs(ccwt->output[ccwt->output_padding+x]), 1.0))
@@ -70,7 +70,7 @@ int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char mode) {
     if(setjmp(png_jmpbuf(render.png))) {
         free(render.row);
         png_destroy_write_struct(&render.png, &render.png_info);
-        return -2;
+        return -3;
     }
     png_init_io(render.png, file);
     png_set_IHDR(render.png, render.png_info, ccwt->output_width, ccwt->height,

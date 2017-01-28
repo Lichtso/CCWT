@@ -26,11 +26,12 @@ def generateWave(frequency_range, frequency_offset):
     return wave
 
 frequency_range = height*0.25
-frequencies = ccwt.generate_frequencies(height, frequency_range)
-wave = generateWave(frequency_range*0.5, 0.0)+generateWave(0.0, frequency_range*0.09375)+generateWave(0.0, frequency_range*(1.0-0.09375))
+frequency_band = ccwt.frequency_band(height, frequency_range)
+signal = generateWave(frequency_range*0.5, 0.0)+generateWave(0.0, frequency_range*0.09375)+generateWave(0.0, frequency_range*(1.0-0.09375))
+fft_of_signal = ccwt.fft(signal)
 
 for mode in range(0, 6):
-    ccwt.render_png('gallery/rendering_mode_'+str(mode)+'.png', mode, wave, frequencies)
+    ccwt.render_png('gallery/rendering_mode_'+str(mode)+'.png', mode, fft_of_signal, frequency_band)
 ```
 
 

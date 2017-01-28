@@ -17,10 +17,9 @@ int row_callback(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
     return 0;
 }
 
-static PyObject* generate_frequencies(PyObject* self, PyObject* args) {
+static PyObject* frequency_band(PyObject* self, PyObject* args) {
     unsigned int frequencies_count;
     double frequency_range = 0.0, frequency_offset = 0.0, frequency_basis = 0.0, deviation = M_E/(M_PI*M_PI);
-
     if(!PyArg_ParseTuple(args, "i|dddd", &frequencies_count, &frequency_range, &frequency_offset, &frequency_basis, &deviation))
         return NULL;
 
@@ -29,10 +28,35 @@ static PyObject* generate_frequencies(PyObject* self, PyObject* args) {
     if(!frequencies)
         return NULL;
 
-    ccwt_generate_frequencies((double*)PyArray_DATA(frequencies), frequencies_count, frequency_range, frequency_offset, frequency_basis, deviation);
+    ccwt_frequency_band((double*)PyArray_DATA(frequencies), frequencies_count, frequency_range, frequency_offset, frequency_basis, deviation);
 
     Py_INCREF(frequencies);
     return (PyObject*)frequencies;
+}
+
+static PyObject* fft(PyObject* self, PyObject* args) {
+    unsigned int input_padding = 0;
+    PyArrayObject* input_array = NULL;
+    if(!PyArg_ParseTuple(args, "O!|i", &PyArray_Type, &input_array, &input_padding))
+        return NULL;
+
+    if(PyArray_NDIM(input_array) != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected first argument to have exactly one dimension");
+        return NULL;
+    }
+
+    if(PyArray_TYPE(input_array) < NPY_FLOAT32 || PyArray_TYPE(input_array) > NPY_COMPLEX128) {
+        PyErr_SetString(PyExc_TypeError, "Expected first argument to be an array of: float32, float64, complex64 or complex128");
+        return NULL;
+    }
+
+    unsigned int input_width = (unsigned int)PyArray_DIM(input_array, 0);
+    complex double* output_array = ccwt_fft(input_width, input_padding, PyArray_DATA(input_array),
+        PyArray_TYPE(input_array) == NPY_FLOAT64 || PyArray_TYPE(input_array) == NPY_COMPLEX128,
+        PyArray_TYPE(input_array) == NPY_COMPLEX64 || PyArray_TYPE(input_array) == NPY_COMPLEX128);
+
+    long int dimensions[] = { input_width+input_padding*2 };
+    return PyArray_New(&PyArray_Type, 1, dimensions, NPY_COMPLEX128, NULL, output_array, 0, 0, Py_None);
 }
 
 static PyObject* python_api(PyObject* args, unsigned int mode) {
@@ -62,41 +86,28 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         goto cleanup;
     }
 
+    if(PyArray_TYPE(input_array) != NPY_COMPLEX128) {
+        PyErr_SetString(PyExc_TypeError, "Expected first argument to be an array of type complex128");
+        goto cleanup;
+    }
+
     if(PyArray_NDIM(frequencies) != 2) {
         PyErr_SetString(PyExc_TypeError, "Expected second argument to have exactly two dimensions");
         goto cleanup;
     }
 
     if(PyArray_TYPE(frequencies) != NPY_FLOAT64) {
-        PyErr_SetString(PyExc_TypeError, "Expected second argument to be an array of float64");
+        PyErr_SetString(PyExc_TypeError, "Expected second argument to be an array of type float64");
         goto cleanup;
     }
 
-    ccwt.frequencies = (double*)PyArray_DATA(frequencies);
-    ccwt.input_width = (unsigned int)PyArray_DIM(input_array, 0);
+    ccwt.input_sample_count = (unsigned int)PyArray_DIM(input_array, 0);
+    ccwt.input_width = ccwt.input_sample_count-2*ccwt.input_padding;
     ccwt.height = (unsigned int)PyArray_DIM(frequencies, 0);
-
+    ccwt.input = (complex double*)PyArray_DATA(input_array);
+    ccwt.frequencies = (double*)PyArray_DATA(frequencies);
     if(ccwt.output_width == 0)
         ccwt.output_width = ccwt.input_width;
-    else if(ccwt.output_width > ccwt.input_width) {
-        PyErr_SetString(PyExc_ValueError, "Upsampling is not supported");
-        goto cleanup;
-    }
-
-    if(ccwt_init(&ccwt) != 0) {
-        PyErr_SetNone(PyExc_MemoryError);
-        goto cleanup;
-    }
-
-    switch(PyArray_TYPE(input_array)) {
-        python_api_case(NPY_FLOAT32, float);
-        python_api_case(NPY_FLOAT64, double);
-        python_api_case(NPY_COMPLEX64, complex float);
-        python_api_case(NPY_COMPLEX128, complex double);
-        default:
-            PyErr_SetString(PyExc_TypeError, "Expected first argument to be an array of: float32, float64, complex64 or complex128");
-            goto cleanup;
-    }
 
     if(mode == 0) {
         long int dimensions[] = { ccwt.height, ccwt.output_width };
@@ -114,11 +125,13 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         case -1:
             PyErr_SetNone(PyExc_MemoryError);
             break;
+        case -2:
+            PyErr_SetString(PyExc_ValueError, "Upsampling is not supported");
+            break;
         case 0:;
     }
 
     cleanup:
-    ccwt_cleanup(&ccwt);
     if(mode == 0) {
         if(!output_array)
             return NULL;
@@ -141,7 +154,8 @@ static PyObject* render_png(PyObject* self, PyObject* args) {
 }
 
 static struct PyMethodDef module_methods[] = {
-    { "generate_frequencies", generate_frequencies, METH_VARARGS, "Generate a frequency band" },
+    { "fft", fft, METH_VARARGS, "Calculate the FFT of a signal" },
+    { "frequency_band", frequency_band, METH_VARARGS, "Generate a frequency band" },
     { "calculate", calculate, METH_VARARGS, "Calculate 2D complex array as result" },
     { "render_png", render_png, METH_VARARGS, "Generate a PNG image as result" },
     { NULL, NULL, 0, NULL }
@@ -157,7 +171,7 @@ static struct PyModuleDef module_definition = {
     PyModuleDef_HEAD_INIT, str(module_name), "", -1, module_methods
 };
 #define module_init PyInit_
-#define module_create(module_name) return PyModule_Create(&module_definition)
+#define module_create(module_name) PyModule_Create(&module_definition)
 #else
 #define module_init init
 #define module_create(module_name) Py_InitModule(str(module_name), module_methods)
@@ -165,5 +179,11 @@ static struct PyModuleDef module_definition = {
 
 PyMODINIT_FUNC concat(module_init, module_name) (void) {
     import_array();
-    module_create(module_name);
+    PyObject* module = module_create(module_name);
+#undef macro_wrapper
+#define macro_wrapper(name) PyModule_AddIntConstant(module, #name, name);
+#include <render_mode.h>
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }
