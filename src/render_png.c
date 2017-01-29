@@ -3,7 +3,7 @@
 
 struct ccwt_render_png_data {
     unsigned char mode;
-    unsigned char* row;
+    png_bytepp row_pointers;
     png_structp png;
     png_infop png_info;
 };
@@ -36,50 +36,63 @@ void ccwt_render_png_pixel(unsigned char* pixel, double H, double S, double V) {
 
 #define clamp_and_scale(value) fmin(fmax(0.0, value), 1.0)*max_color_factor
 
-int ccwt_render_png_row(struct ccwt_data* ccwt, void* user_data, unsigned int row) {
-    struct ccwt_render_png_data* render = (struct ccwt_render_png_data*)user_data;
+int ccwt_render_png_row(struct ccwt_thread_data* thread, unsigned int y) {
+    struct ccwt_data* ccwt = thread->ccwt;
+    struct ccwt_render_png_data* render = (struct ccwt_render_png_data*)ccwt->user_data;
+    unsigned char* output = render->row_pointers[y];
     switch(render->mode) {
         case REAL_GRAYSCALE:
-            ccwt_render_png_row_case(render->row[x] = clamp_and_scale(0.5+0.5*creal(ccwt->output[ccwt->output_padding+x])));
+            ccwt_render_png_row_case(output[x] = clamp_and_scale(0.5+0.5*creal(thread->output[ccwt->output_padding+x])));
         case IMAGINARY_GRAYSCALE:
-            ccwt_render_png_row_case(render->row[x] = clamp_and_scale(0.5+0.5*cimag(ccwt->output[ccwt->output_padding+x])));
+            ccwt_render_png_row_case(output[x] = clamp_and_scale(0.5+0.5*cimag(thread->output[ccwt->output_padding+x])));
         case AMPLITUDE_GRAYSCALE:
-            ccwt_render_png_row_case(render->row[x] = clamp_and_scale(cabs(ccwt->output[ccwt->output_padding+x])));
+            ccwt_render_png_row_case(output[x] = clamp_and_scale(cabs(thread->output[ccwt->output_padding+x])));
         case PHASE_GRAYSCALE:
-            ccwt_render_png_row_case(render->row[x] = fabs(carg(ccwt->output[ccwt->output_padding+x])/M_PI)*max_color_factor);
+            ccwt_render_png_row_case(output[x] = fabs(carg(thread->output[ccwt->output_padding+x])/M_PI)*max_color_factor);
         case EQUIPOTENTIAL:
-            ccwt_render_png_row_case(ccwt_render_png_pixel(&render->row[x*3], fmin(cabs(ccwt->output[ccwt->output_padding+x])*0.9, 0.9), 1.0, 1.0));
+            ccwt_render_png_row_case(ccwt_render_png_pixel(&output[x*3], fmin(cabs(thread->output[ccwt->output_padding+x])*0.9, 0.9), 1.0, 1.0));
         case RAINBOW_WALLPAPER:
-            ccwt_render_png_row_case(ccwt_render_png_pixel(&render->row[x*3],
-                carg(ccwt->output[ccwt->output_padding+x])/(2*M_PI)+0.5, 1.0,
-                fmin(cabs(ccwt->output[ccwt->output_padding+x]), 1.0))
+            ccwt_render_png_row_case(ccwt_render_png_pixel(&output[x*3],
+                carg(thread->output[ccwt->output_padding+x])/(2*M_PI)+0.5, 1.0,
+                fmin(cabs(thread->output[ccwt->output_padding+x]), 1.0))
             );
     }
-    png_write_row(render->png, render->row);
     return 0;
 }
 
 int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char mode) {
+    int return_value = -1;
     struct ccwt_render_png_data render;
     render.mode = mode;
-    render.row = (unsigned char*)malloc(ccwt->output_width*((render.mode < 4) ? 1 : 3));
-    if(!render.row)
-        return -1;
+    render.row_pointers = (png_bytepp)malloc(ccwt->height*sizeof(void*));
+    if(!render.row_pointers)
+        return return_value;
+    unsigned int bytesPerPixel = ((render.mode < 4) ? 1 : 3);
+    for(unsigned int y = 0; y < ccwt->height; ++y) {
+        render.row_pointers[y] = (png_bytep)malloc(ccwt->output_width*bytesPerPixel);
+        if(!render.row_pointers[y])
+            return return_value;
+    }
     render.png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     render.png_info = png_create_info_struct(render.png);
     if(setjmp(png_jmpbuf(render.png))) {
-        free(render.row);
-        png_destroy_write_struct(&render.png, &render.png_info);
-        return -3;
+        return_value = -3;
+        goto cleanup;
     }
     png_init_io(render.png, file);
     png_set_IHDR(render.png, render.png_info, ccwt->output_width, ccwt->height,
                  8, (render.mode < 4) ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(render.png, render.png_info);
-    int return_value = ccwt_calculate(ccwt, &render, ccwt_render_png_row);
+    ccwt->user_data = &render;
+    ccwt->callback = ccwt_render_png_row;
+    return_value = ccwt_calculate(ccwt);
+    png_write_image(render.png, render.row_pointers);
     png_write_end(render.png, NULL);
-    free(render.row);
+    cleanup:
+    for(unsigned int y = 0; y < ccwt->height; ++y)
+        free(render.row_pointers[y]);
+    free(render.row_pointers);
     png_destroy_write_struct(&render.png, &render.png_info);
     return return_value;
 }

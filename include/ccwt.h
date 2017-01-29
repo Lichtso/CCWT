@@ -3,18 +3,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-struct fftw_plan_struct;
-typedef struct fftw_plan_s* fftw_plan;
+struct ccwt_data;
+
+struct ccwt_thread_data {
+    int return_value;
+    unsigned int begin_y, end_y, thread_index;
+    void* pthread;
+    complex double* output;
+    struct ccwt_data* ccwt;
+};
+
 struct ccwt_data {
-    double* frequencies;
-    complex double *input, *output;
-    fftw_plan input_plan, output_plan;
-    unsigned int input_sample_count, output_sample_count, input_padding, output_padding, input_width, output_width, height;
+    unsigned int thread_count, height,
+                 input_sample_count, input_width, input_padding,
+                 output_sample_count, output_width, output_padding;
+    complex double* input;
+    double* frequency_band;
+    struct ccwt_thread_data* threads;
+    void *fftw_plan, *user_data;
+    int(*callback)(struct ccwt_thread_data* thread, unsigned int y);
 };
 
 void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation);
-int ccwt_init(struct ccwt_data* ccwt);
-int ccwt_cleanup(struct ccwt_data* ccwt);
-void ccwt_generate_frequencies(double* frequencies, unsigned int frequencies_count, double frequency_range, double frequency_offset, double frequency_basis, double deviation);
-int ccwt_calculate(struct ccwt_data* ccwt, void* user_data, int(*callback)(struct ccwt_data*, void*, unsigned int));
+void ccwt_frequency_band(double* frequency_band, unsigned int frequencies_count, double frequency_range, double frequency_offset, double frequency_basis, double deviation);
+complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char is_double_precision, unsigned char is_complex);
+int ccwt_calculate(struct ccwt_data* ccwt);
+
+enum ccwt_render_mode {
+#define macro_wrapper(name) name,
+#include <render_mode.h>
+};
+
 int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char mode);
