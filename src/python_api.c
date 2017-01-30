@@ -28,9 +28,10 @@ static PyObject* fft(PyObject* self, PyObject* args) {
     }
 
     unsigned int input_width = (unsigned int)PyArray_DIM(input_signal, 0);
-    complex double* fourier_transformed_signal = ccwt_fft(input_width, input_padding, thread_count, PyArray_DATA(input_signal),
-        PyArray_TYPE(input_signal) == NPY_FLOAT64 || PyArray_TYPE(input_signal) == NPY_COMPLEX128,
-        PyArray_TYPE(input_signal) == NPY_COMPLEX64 || PyArray_TYPE(input_signal) == NPY_COMPLEX128);
+    complex double* fourier_transformed_signal = ccwt_fft(
+        input_width, input_padding, thread_count,
+        PyArray_DATA(input_signal), PyArray_TYPE(input_signal)-NPY_FLOAT32
+    );
 
     long int dimensions[] = { input_width+input_padding*2 };
     PyObject* output_array = PyArray_New(&PyArray_Type, 1, dimensions, NPY_COMPLEX128, NULL, fourier_transformed_signal, 0, 0, Py_None);
@@ -40,7 +41,7 @@ static PyObject* fft(PyObject* self, PyObject* args) {
 
 static PyObject* frequency_band(PyObject* self, PyObject* args) {
     unsigned int frequencies_count;
-    double frequency_range = 0.0, frequency_offset = 0.0, frequency_basis = 0.0, deviation = M_E/(M_PI*M_PI);
+    double frequency_range = 0.0, frequency_offset = 0.0, frequency_basis = 0.0, deviation = 1.0;
     if(!PyArg_ParseTuple(args, "i|dddd", &frequencies_count, &frequency_range, &frequency_offset, &frequency_basis, &deviation))
         return NULL;
 
@@ -162,7 +163,7 @@ static PyObject* render_png(PyObject* self, PyObject* args) {
 static struct PyMethodDef module_methods[] = {
     { "fft", fft, METH_VARARGS, "Calculate the FFT of a signal" },
     { "frequency_band", frequency_band, METH_VARARGS, "Generate a frequency band" },
-    { "calculate", calculate, METH_VARARGS, "Calculate 2D complex array as result" },
+    { "numeric_output", calculate, METH_VARARGS, "Calculate 2D complex array as result" },
     { "render_png", render_png, METH_VARARGS, "Generate a PNG image as result" },
     { NULL, NULL, 0, NULL }
 };

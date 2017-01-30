@@ -26,7 +26,7 @@ struct ccwt_data {
 
 void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation);
 void ccwt_frequency_band(double* frequency_band, unsigned int frequencies_count, double frequency_range, double frequency_offset, double frequency_basis, double deviation);
-complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char is_double_precision, unsigned char is_complex);
+complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char input_type);
 int ccwt_calculate(struct ccwt_data* ccwt);
 
 enum ccwt_render_mode {

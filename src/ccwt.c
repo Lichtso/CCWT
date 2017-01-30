@@ -14,6 +14,7 @@ void gabor_wavelet(unsigned int sample_count, complex double* kernel, double cen
 }
 
 void ccwt_frequency_band(double* frequency_band, unsigned int frequency_band_count, double frequency_range, double frequency_offset, double frequency_basis, double deviation) {
+    deviation *= M_E/(M_PI*M_PI);
     if(frequency_range == 0.0)
         frequency_range = frequency_band_count/2;
     for(unsigned int y = 0; y < frequency_band_count; ++y) {
@@ -28,33 +29,32 @@ void ccwt_frequency_band(double* frequency_band, unsigned int frequency_band_cou
     }
 }
 
-complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char is_double_precision, unsigned char is_complex) {
+#define ccwt_fft_case(output_t, input_t, input_factor) \
+    for(unsigned int i = 0; i < input_padding; ++i) \
+        ((output_t*)output)[i] = ((output_t*)output)[input_sample_count-i-1] = 0.0; \
+    for(unsigned int i = 0; i < input_width; ++i) \
+        ((output_t*)output)[input_padding+i] = ((input_t*)input)[i]*input_factor; \
+    break
+
+complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char input_type) {
     unsigned int input_sample_count = input_width+2*input_padding;
     complex double* output = (complex double*)fftw_malloc(sizeof(fftw_complex)*input_sample_count);
     if(!output)
         return NULL;
 
-    for(unsigned int i = 0; i < input_padding; ++i)
-        output[i] = output[input_sample_count-i-1] = 0;
-
-    if(is_double_precision) {
-        if(is_complex)
-            for(unsigned int i = 0; i < input_width; ++i)
-                output[input_padding+i] = ((complex double*)input)[i];
-        else
-            for(unsigned int i = 0; i < input_width; ++i)
-                ((double*)output)[input_padding+i] = ((double*)input)[i];
-    } else {
-        if(is_complex)
-            for(unsigned int i = 0; i < input_width; ++i)
-                output[input_padding+i] = ((complex float*)input)[i];
-        else
-            for(unsigned int i = 0; i < input_width; ++i)
-                ((double*)output)[input_padding+i] = ((float*)input)[i];
+    switch(input_type) {
+        case 0: ccwt_fft_case(double, float, 2.0);
+        case 1: ccwt_fft_case(double, double, 2.0);
+        case 3: ccwt_fft_case(complex double, complex float, 1.0);
+        case 4: ccwt_fft_case(complex double, complex double, 1.0);
     }
 
+    if(input_type < 2)
+        for(unsigned int i = input_sample_count; i < input_sample_count*2; ++i)
+            ((double*)output)[i] = 0;
+
     fftw_plan_with_nthreads(thread_count);
-    fftw_plan input_plan = (is_complex)
+    fftw_plan input_plan = (input_type > 2)
         ? fftw_plan_dft_1d(input_sample_count, (fftw_complex*)output, (fftw_complex*)output, FFTW_FORWARD, FFTW_ESTIMATE)
         : fftw_plan_dft_r2c_1d(input_sample_count, (double*)output, (fftw_complex*)output, FFTW_ESTIMATE);
     if(!input_plan)

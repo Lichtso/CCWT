@@ -14,18 +14,18 @@ const unsigned int max_color_factor = 255;
     pixel[0] = a*max_color_factor; \
     pixel[1] = b*max_color_factor; \
     pixel[2] = c*max_color_factor; \
-    break;
+    break
 
 void ccwt_render_png_pixel(unsigned char* pixel, double H, double S, double V) {
     unsigned char h = H*6;
     double f = H*6-h, p = V*(1-S), q = V*(1-S*f), t = V*(1-(S*(1-f)));
     switch(h) {
-        default: ccwt_render_png_pixel_case(V, t, p)
-        case 1: ccwt_render_png_pixel_case(q, V, p)
-        case 2: ccwt_render_png_pixel_case(p, V, t)
-        case 3: ccwt_render_png_pixel_case(p, q, V)
-        case 4: ccwt_render_png_pixel_case(t, p, V)
-        case 5: ccwt_render_png_pixel_case(V, p, q)
+        default: ccwt_render_png_pixel_case(V, t, p);
+        case 1: ccwt_render_png_pixel_case(q, V, p);
+        case 2: ccwt_render_png_pixel_case(p, V, t);
+        case 3: ccwt_render_png_pixel_case(p, q, V);
+        case 4: ccwt_render_png_pixel_case(t, p, V);
+        case 5: ccwt_render_png_pixel_case(V, p, q);
     }
 }
 
