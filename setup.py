@@ -1,13 +1,14 @@
-#!/usr/bin/python
 #coding=UTF-8
 
 from distutils.core import setup, Extension
 import numpy
 
 name = 'ccwt'
-version = '0.0.1'
+version = '0.0.2'
 url = 'https://github.com/lichtso/ccwt'
 
+import os
+os.environ['ARCHFLAGS'] = '-arch x86_64'
 setup(
     name = name,
     version = version,
@@ -18,10 +19,9 @@ setup(
     author_email = 'AlexanderMeissner@gmx.net',
     url = url,
     download_url = url+'/tarball/v'+version,
-    data_files = [('headers', ['include/ccwt.h', 'include/render_mode.h'])],
     ext_modules = [Extension(name,
         include_dirs = ['include', numpy.get_include()],
-        libraries = ['fftw3', 'fftw3_threads', 'pthread', 'png'],
+        libraries = ['pthread', 'fftw3', 'fftw3_threads', 'png'],
         sources = ['src/ccwt.c', 'src/render_png.c', 'src/python_api.c']
     )]
 )
