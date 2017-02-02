@@ -95,7 +95,7 @@ void* ccwt_calculate_thread(void* ptr) {
     return NULL;
 }
 
-int ccwt_calculate(struct ccwt_data* ccwt) {
+int ccwt_numeric_output(struct ccwt_data* ccwt) {
     ccwt->output_sample_count = ccwt->output_width*((double)ccwt->input_sample_count/ccwt->input_width);
     ccwt->output_padding = ccwt->input_padding*((double)ccwt->output_width/ccwt->input_width);
     if(ccwt->output_width > ccwt->input_width)

@@ -67,6 +67,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     char* path = NULL;
     FILE* file = NULL;
     unsigned int return_value = 0, rendering_mode;
+    double logarithmic_basis;
     PyArrayObject *fourier_transformed_signal = NULL, *output_array = NULL, *frequency_band = NULL;
     struct ccwt_data ccwt;
     ccwt.thread_count = 1;
@@ -77,7 +78,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         if(!PyArg_ParseTuple(args, "O!O!|iii", &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
             return NULL;
     } else {
-        if(!PyArg_ParseTuple(args, "siO!O!|iii", &path, &rendering_mode, &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
+        if(!PyArg_ParseTuple(args, "sidO!O!|iii", &path, &rendering_mode, &logarithmic_basis, &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
             return NULL;
         file = fopen(path, "wb");
         if(!file) {
@@ -121,9 +122,9 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
             goto cleanup;
         ccwt.user_data = PyArray_DATA(output_array);
         ccwt.callback = row_callback;
-        return_value = ccwt_calculate(&ccwt);
+        return_value = ccwt_numeric_output(&ccwt);
     } else
-        return_value = ccwt_render_png(&ccwt, file, rendering_mode);
+        return_value = ccwt_render_png(&ccwt, file, rendering_mode, logarithmic_basis);
 
     switch(return_value) {
         default:
