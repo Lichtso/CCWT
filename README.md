@@ -1,4 +1,13 @@
 # CCWT library for C and Python
+
+Always wanted to easyly generate spectrograms like this?
+
+![spectrogram](https://raw.githubusercontent.com/Lichtso/CCWT/gallery/teaser.png)
+
+Take the [Tutorial](https://github.com/Lichtso/CCWT/wiki/Tutorial) with lots of examples and all features being explained.
+
+
+## Features
 Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Continuous_wavelet_transform)
 - with a [gabor wavelet](https://en.wikipedia.org/wiki/Gabor_wavelet)
 - interfaces for C99, python2.7 and python3.5
