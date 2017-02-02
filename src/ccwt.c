@@ -103,7 +103,7 @@ int ccwt_numeric_output(struct ccwt_data* ccwt) {
     if(ccwt->thread_count == 0)
         ccwt->thread_count = 1;
 
-    int return_value;
+    int return_value = -4;
     ccwt->threads = (struct ccwt_thread_data*)malloc(sizeof(struct ccwt_thread_data)*ccwt->thread_count);
     if(!ccwt->threads)
         goto cleanup;
@@ -120,9 +120,10 @@ int ccwt_numeric_output(struct ccwt_data* ccwt) {
         ccwt->threads[t].thread_index = t;
         ccwt->threads[t].output = (complex double*)fftw_malloc(sizeof(fftw_complex)*ccwt->input_sample_count);
         ccwt->threads[t].ccwt = ccwt;
-        return_value = -1;
-        if(!ccwt->threads[t].output)
+        if(!ccwt->threads[t].output) {
+            return_value = -1;
             goto cleanup;
+        }
     }
 
     fftw_plan_with_nthreads(1);

@@ -10,6 +10,31 @@ Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Contin
 - helper method for linear and exponential frequency bands
 
 
+## Dependencies
+
+### Ubuntu
+```bash
+sudo apt-get install libfftw3-dev libpng-dev
+```
+
+### Arch Linux
+```bash
+sudo pacman -S fftw libpng
+```
+
+### Mac OS
+```bash
+brew install fftw libpng
+```
+
+
+## Installation
+```bash
+sudo pip install ccwt
+```
+Keep in mind that python3 also uses pip3.
+
+
 ## Documentation
 
 ### ccwt.fft()
