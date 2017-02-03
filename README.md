@@ -1,6 +1,6 @@
 # CCWT library for C and Python
 
-Always wanted to easyly generate spectrograms like this?
+Did you ever wanted to easily generate a spectrogram like this one?
 
 ![spectrogram](https://raw.githubusercontent.com/Lichtso/CCWT/gallery/teaser.png)
 
