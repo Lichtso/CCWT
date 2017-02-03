@@ -39,9 +39,8 @@ brew install fftw libpng
 
 ## Installation
 ```bash
-pip install ccwt
+[sudo] pip[3] install ccwt
 ```
-Keep in mind that python3 also uses pip3.
 
 
 ## Documentation

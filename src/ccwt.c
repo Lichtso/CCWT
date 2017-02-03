@@ -2,17 +2,6 @@
 #include <fftw3.h>
 #include <pthread.h>
 
-void gabor_wavelet(unsigned int sample_count, complex double* kernel, double center_frequency, double deviation) {
-    deviation = 1.0/sqrt(deviation);
-    unsigned int half_sample_count = sample_count>>1;
-    for(unsigned int i = 0; i < sample_count; ++i) {
-        double f = fabs(i-center_frequency);
-        f = half_sample_count-fabs(f-half_sample_count);
-        f *= deviation;
-        kernel[i] = exp(-f*f);
-    }
-}
-
 void ccwt_frequency_band(double* frequency_band, unsigned int frequency_band_count, double frequency_range, double frequency_offset, double frequency_basis, double deviation) {
     deviation *= M_E/(M_PI*M_PI);
     if(frequency_range == 0.0)
@@ -66,27 +55,34 @@ complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, u
     return output;
 }
 
+double approximation_size = 4;
+#define ccwt_gabor_wavelet(operator, index) { \
+    double f = fabs(index-frequency); \
+    f = half_input_sample_count-fabs(f-half_input_sample_count); \
+    output[i] operator exp(-f*f*deviation)*ccwt->input[index]*scale_factor; \
+}
+
 void* ccwt_calculate_thread(void* ptr) {
     struct ccwt_thread_data* thread = (struct ccwt_thread_data*)ptr;
     struct ccwt_data* ccwt = thread->ccwt;
     complex double* output = thread->output;
+    unsigned int half_input_sample_count = ccwt->input_sample_count>>1;
     double scale_factor = 1.0/(double)ccwt->input_sample_count,
            padding_correction = (double)ccwt->input_sample_count/ccwt->input_width;
 
     for(unsigned int y = thread->begin_y; y < thread->end_y && !thread->return_value; ++y) {
-        double frequency = ccwt->frequency_band[y*2  ]*padding_correction,
-               deviation = ccwt->frequency_band[y*2+1]*ccwt->output_sample_count*padding_correction;
-        gabor_wavelet(ccwt->input_sample_count, output, frequency, deviation);
+        double frequency = ccwt->frequency_band[y*2]*padding_correction,
+               deviation = 1.0/(ccwt->frequency_band[y*2+1]*ccwt->output_sample_count*padding_correction);
 
         for(unsigned int i = 0; i < ccwt->output_sample_count; ++i)
-            output[i] = output[i]*ccwt->input[i]*scale_factor;
+            ccwt_gabor_wavelet(=, i);
         if(ccwt->output_sample_count < ccwt->input_sample_count) {
             unsigned int rest = ccwt->input_sample_count%ccwt->output_sample_count, cut_index = ccwt->input_sample_count-rest;
             for(unsigned int chunk_index = ccwt->output_sample_count; chunk_index < cut_index; chunk_index += ccwt->output_sample_count)
                 for(unsigned int i = 0; i < ccwt->output_sample_count; ++i)
-                    output[i] += output[chunk_index+i]*ccwt->input[chunk_index+i]*scale_factor;
+                    ccwt_gabor_wavelet(+=, chunk_index+i);
             for(unsigned int i = 0; i < rest; ++i)
-                output[i] += output[cut_index+i]*ccwt->input[cut_index+i]*scale_factor;
+                ccwt_gabor_wavelet(+=, cut_index+i);
         }
 
         fftw_execute_dft((fftw_plan)ccwt->fftw_plan, (fftw_complex*)output, (fftw_complex*)output);
@@ -118,7 +114,7 @@ int ccwt_numeric_output(struct ccwt_data* ccwt) {
             ccwt->threads[t].end_y = ccwt->threads[t].begin_y+slice_size;
         }
         ccwt->threads[t].thread_index = t;
-        ccwt->threads[t].output = (complex double*)fftw_malloc(sizeof(fftw_complex)*ccwt->input_sample_count);
+        ccwt->threads[t].output = (complex double*)fftw_malloc(sizeof(fftw_complex)*ccwt->output_sample_count);
         ccwt->threads[t].ccwt = ccwt;
         if(!ccwt->threads[t].output) {
             return_value = -1;
