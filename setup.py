@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 import numpy
 
 name = 'ccwt'
-version = '0.0.2'
+version = '0.0.3'
 url = 'https://github.com/lichtso/ccwt'
 
 import os
@@ -20,9 +20,10 @@ setup(
     url = url,
     download_url = url+'/tarball/v'+version,
     ext_modules = [Extension(name,
+        language = 'c',
+        extra_compile_args = ['-std=c99'],
         include_dirs = ['include', numpy.get_include()],
         libraries = ['pthread', 'fftw3', 'fftw3_threads', 'png'],
-        sources = ['src/ccwt.c', 'src/render_png.c', 'src/python_api.c'],
-        extra_compile_args = ['-std=c99']
+        sources = ['src/ccwt.c', 'src/render_png.c', 'src/python_api.c']
     )]
 )
