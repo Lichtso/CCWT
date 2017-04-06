@@ -66,6 +66,6 @@ brew install fftw libpng
 
 ### ccwt.render_png()
 Same as ccwt.numeric_output() but with these additionally at the beginning:
-- path: Filename of the resulting PNG image
+- file: File object to store the resulting PNG image
 - render_mode: indicating the color scheme for rendering, see include/render_mode.h for possible values
 - logarithmic_basis: Values > 0.0 switch from a linear to a logarithmic intensity rendering using this as basis

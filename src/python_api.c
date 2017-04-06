@@ -64,7 +64,6 @@ int row_callback(struct ccwt_thread_data* thread, unsigned int y) {
 }
 
 static PyObject* python_api(PyObject* args, unsigned int mode) {
-    char* path = NULL;
     FILE* file = NULL;
     unsigned int return_value = 0, rendering_mode;
     double logarithmic_basis;
@@ -78,9 +77,10 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         if(!PyArg_ParseTuple(args, "O!O!|iii", &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
             return NULL;
     } else {
-        if(!PyArg_ParseTuple(args, "sidO!O!|iii", &path, &rendering_mode, &logarithmic_basis, &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
+        PyObject* file_object = NULL;
+        if(!PyArg_ParseTuple(args, "OidO!O!|iii", &file_object, &rendering_mode, &logarithmic_basis, &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
             return NULL;
-        file = fopen(path, "wb");
+        file = fdopen(PyObject_AsFileDescriptor(file_object), "wb");
         if(!file) {
             PyErr_SetString(PyExc_IOError, "Could not open output file");
             goto cleanup;
@@ -146,8 +146,6 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         Py_INCREF(output_array);
         return (PyObject*)output_array;
     } else {
-        if(file)
-            fclose(file);
         Py_INCREF(Py_None);
         return Py_None;
     }
