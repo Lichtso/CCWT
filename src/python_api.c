@@ -28,7 +28,7 @@ static PyObject* fft(PyObject* self, PyObject* args) {
     }
 
     unsigned int input_width = (unsigned int)PyArray_DIM(input_signal, 0);
-    complex double* fourier_transformed_signal = ccwt_fft(
+    complex_type* fourier_transformed_signal = ccwt_fft(
         input_width, input_padding, thread_count,
         PyArray_DATA(input_signal), PyArray_TYPE(input_signal)-NPY_FLOAT32
     );
@@ -58,8 +58,8 @@ static PyObject* frequency_band(PyObject* self, PyObject* args) {
 
 int row_callback(struct ccwt_thread_data* thread, unsigned int y) {
     struct ccwt_data* ccwt = thread->ccwt;
-    complex double* array_data = (complex double*)ccwt->user_data;
-    memcpy(&array_data[ccwt->output_width*y], &thread->output[ccwt->output_padding], ccwt->output_width*sizeof(complex double));
+    complex_type* array_data = (complex_type*)ccwt->user_data;
+    memcpy(&array_data[ccwt->output_width*y], &thread->output[ccwt->output_padding], ccwt->output_width*sizeof(complex_type));
     return 0;
 }
 
@@ -110,7 +110,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
     ccwt.input_sample_count = (unsigned int)PyArray_DIM(fourier_transformed_signal, 0);
     ccwt.input_width = ccwt.input_sample_count-2*ccwt.input_padding;
     ccwt.height = (unsigned int)PyArray_DIM(frequency_band, 0);
-    ccwt.input = (complex double*)PyArray_DATA(fourier_transformed_signal);
+    ccwt.input = (complex_type*)PyArray_DATA(fourier_transformed_signal);
     ccwt.frequency_band = (double*)PyArray_DATA(frequency_band);
     if(ccwt.output_width == 0)
         ccwt.output_width = ccwt.input_width;

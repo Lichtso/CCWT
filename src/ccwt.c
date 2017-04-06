@@ -25,17 +25,17 @@ void ccwt_frequency_band(double* frequency_band, unsigned int frequency_band_cou
         ((output_t*)output)[input_padding+i] = ((input_t*)input)[i]*input_factor; \
     break
 
-complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char input_type) {
+complex_type* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char input_type) {
     unsigned int input_sample_count = input_width+2*input_padding;
-    complex double* output = (complex double*)fftw_malloc(sizeof(fftw_complex)*input_sample_count);
+    complex_type* output = (complex_type*)fftw_malloc(sizeof(fftw_complex)*input_sample_count);
     if(!output)
         return NULL;
 
     switch(input_type) {
         case 0: ccwt_fft_case(double, float, 2.0);
         case 1: ccwt_fft_case(double, double, 2.0);
-        case 3: ccwt_fft_case(complex double, complex float, 1.0);
-        case 4: ccwt_fft_case(complex double, complex double, 1.0);
+        case 3: ccwt_fft_case(complex_type, complex float, 1.0);
+        case 4: ccwt_fft_case(complex_type, complex_type, 1.0);
     }
 
     if(input_type < 2)
@@ -55,7 +55,6 @@ complex double* ccwt_fft(unsigned int input_width, unsigned int input_padding, u
     return output;
 }
 
-double approximation_size = 4;
 #define ccwt_gabor_wavelet(operator, index) { \
     double f = fabs(index-frequency); \
     f = half_input_sample_count-fabs(f-half_input_sample_count); \
@@ -65,7 +64,7 @@ double approximation_size = 4;
 void* ccwt_calculate_thread(void* ptr) {
     struct ccwt_thread_data* thread = (struct ccwt_thread_data*)ptr;
     struct ccwt_data* ccwt = thread->ccwt;
-    complex double* output = thread->output;
+    complex_type* output = thread->output;
     unsigned int half_input_sample_count = ccwt->input_sample_count>>1;
     double scale_factor = 1.0/(double)ccwt->input_sample_count,
            padding_correction = (double)ccwt->input_sample_count/ccwt->input_width;
@@ -114,7 +113,7 @@ int ccwt_numeric_output(struct ccwt_data* ccwt) {
             ccwt->threads[t].end_y = ccwt->threads[t].begin_y+slice_size;
         }
         ccwt->threads[t].thread_index = t;
-        ccwt->threads[t].output = (complex double*)fftw_malloc(sizeof(fftw_complex)*ccwt->output_sample_count);
+        ccwt->threads[t].output = (complex_type*)fftw_malloc(sizeof(fftw_complex)*ccwt->output_sample_count);
         ccwt->threads[t].ccwt = ccwt;
         if(!ccwt->threads[t].output) {
             return_value = -1;

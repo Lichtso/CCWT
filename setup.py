@@ -22,6 +22,7 @@ setup(
     ext_modules = [Extension(name,
         include_dirs = ['include', numpy.get_include()],
         libraries = ['pthread', 'fftw3', 'fftw3_threads', 'png'],
-        sources = ['src/ccwt.c', 'src/render_png.c', 'src/python_api.c']
+        sources = ['src/ccwt.c', 'src/render_png.c', 'src/python_api.c'],
+        extra_compile_args = ['-std=c99']
     )]
 )
