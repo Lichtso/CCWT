@@ -146,6 +146,9 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         Py_INCREF(output_array);
         return (PyObject*)output_array;
     } else {
+        if(!file)
+            return NULL;
+        fflush(file);
         Py_INCREF(Py_None);
         return Py_None;
     }
