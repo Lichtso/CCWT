@@ -3,7 +3,7 @@
 #include <pthread.h>
 
 void ccwt_frequency_band(double* frequency_band, unsigned int frequency_band_count, double frequency_range, double frequency_offset, double frequency_basis, double deviation) {
-    deviation *= M_E/(M_PI*M_PI);
+    deviation *= sqrt(1.0/(4.0*M_PI)); // Heisenberg Gabor Limit
     if(frequency_range == 0.0)
         frequency_range = frequency_band_count/2;
     for(unsigned int y = 0; y < frequency_band_count; ++y) {

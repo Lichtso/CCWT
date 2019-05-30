@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 import numpy
 
 name = 'ccwt'
-version = '0.0.6'
+version = '0.0.7'
 url = 'https://github.com/lichtso/ccwt'
 
 import os
