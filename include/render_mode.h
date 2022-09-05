@@ -1,6 +1,0 @@
-macro_wrapper(REAL_GRAYSCALE)
-macro_wrapper(IMAGINARY_GRAYSCALE)
-macro_wrapper(AMPLITUDE_GRAYSCALE)
-macro_wrapper(PHASE_GRAYSCALE)
-macro_wrapper(EQUIPOTENTIAL)
-macro_wrapper(RAINBOW_WALLPAPER)
