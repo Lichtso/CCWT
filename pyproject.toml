@@ -1,0 +1,15 @@
+[project]
+name = "ccwt"
+version = "0.0.8"
+description = "Complex continuous wavelet transformation"
+license = {text = "MIT License"}
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [{name = "Alexander Meißner", email = "AlexanderMeissner@gmx.net"}]
+urls = {repository = "https://github.com/lichtso/ccwt"}
+# platforms = ["Linux", "Mac OS-X", "Unix"]
+
+dependencies = []
+
+[build-system]
+requires = ["setuptools", "numpy"]
+build-backend = "setuptools.build_meta"
