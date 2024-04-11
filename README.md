@@ -13,7 +13,8 @@ Complex [continuous wavelet transformation](https://en.wikipedia.org/wiki/Contin
 - interfaces for C99, python2.7 and python3.5
 - using [libFFTW](http://www.fftw.org) for performance
 - and [libPNG](http://www.libpng.org/pub/png/libpng.html) as possible output
-- 6 render modes
+- 3 synchrosqueeze modes
+- 6 color schemes
 - parallelization / multithreading support
 - customizable frequency bands
 - helper method for linear and exponential frequency bands

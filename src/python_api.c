@@ -65,7 +65,7 @@ int row_callback(struct ccwt_thread_data* thread, unsigned int y) {
 
 static PyObject* python_api(PyObject* args, unsigned int mode) {
     FILE* file = NULL;
-    unsigned int return_value = 0, rendering_mode;
+    unsigned int return_value = 0, synchrosqueeze_mode, color_scheme;
     double logarithmic_basis;
     PyArrayObject *fourier_transformed_signal = NULL, *output_array = NULL, *frequency_band = NULL;
     struct ccwt_data ccwt;
@@ -78,7 +78,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
             return NULL;
     } else {
         PyObject* file_object = NULL;
-        if(!PyArg_ParseTuple(args, "OidO!O!|iii", &file_object, &rendering_mode, &logarithmic_basis, &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
+        if(!PyArg_ParseTuple(args, "OiidO!O!|iii", &file_object, &synchrosqueeze_mode, &color_scheme, &logarithmic_basis, &PyArray_Type, &fourier_transformed_signal, &PyArray_Type, &frequency_band, &ccwt.output_width, &ccwt.input_padding, &ccwt.thread_count))
             return NULL;
         file = fdopen(PyObject_AsFileDescriptor(file_object), "wb");
         if(!file) {
@@ -124,7 +124,7 @@ static PyObject* python_api(PyObject* args, unsigned int mode) {
         ccwt.callback = row_callback;
         return_value = ccwt_numeric_output(&ccwt);
     } else
-        return_value = ccwt_render_png(&ccwt, file, rendering_mode, logarithmic_basis);
+        return_value = ccwt_render_png(&ccwt, file, synchrosqueeze_mode, color_scheme, logarithmic_basis);
 
     switch(return_value) {
         default:
@@ -192,7 +192,8 @@ PyMODINIT_FUNC concat(module_init, module_name) (void) {
     PyObject* module = module_create(module_name);
 #undef macro_wrapper
 #define macro_wrapper(name) PyModule_AddIntConstant(module, #name, name);
-#include <render_mode.h>
+#include <synchrosqueeze_mode.h>
+#include <color_scheme.h>
 #if PY_MAJOR_VERSION >= 3
     return module;
 #endif

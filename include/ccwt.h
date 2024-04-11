@@ -51,9 +51,14 @@ void ccwt_frequency_band(double* frequency_band, unsigned int frequencies_count,
 complex_type* ccwt_fft(unsigned int input_width, unsigned int input_padding, unsigned int thread_count, void* input, unsigned char input_type);
 int ccwt_numeric_output(struct ccwt_data* ccwt);
 
-enum ccwt_render_mode {
+enum ccwt_synchrosqueeze_mode {
 #define macro_wrapper(name) name,
-#include <render_mode.h>
+#include <synchrosqueeze_mode.h>
 };
 
-int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char mode, double log_factor);
+enum ccwt_color_scheme {
+#define macro_wrapper(name) name,
+#include <color_scheme.h>
+};
+
+int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char synchrosqueeze_mode, unsigned char color_scheme, double log_factor);
