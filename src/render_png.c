@@ -56,24 +56,42 @@ complex_type ccwt_synchrosqueeze_identity(struct ccwt_data* ccwt, unsigned int x
 }
 
 complex_type ccwt_synchrosqueeze_derivative_quotient(struct ccwt_data* ccwt, unsigned int x, unsigned int y) {
+    if(x >= ccwt->output_width) x = 0;
+    if(y >= ccwt->height) y = 0;
     complex_type* spectrogram = (complex_type*)ccwt->user_data;
     complex_type next = (y == 0) ? spectrogram[ccwt->output_width+x] : spectrogram[ccwt->output_width*(y-1)+x];
     return (1 - next / spectrogram[ccwt->output_width*y+x]) * M_PI * (y == 0 ? -2.0 : 2.0);
+}
+
+complex_type ccwt_synchrosqueeze_sobel(struct ccwt_data* ccwt, unsigned int x, unsigned int y) {
+    double strength = cabs(ccwt_synchrosqueeze_identity(ccwt, x, y));
+    complex_type nxny = ccwt_synchrosqueeze_derivative_quotient(ccwt, x-1, y-1); nxny /= cabs(nxny);
+    complex_type ny   = ccwt_synchrosqueeze_derivative_quotient(ccwt, x,   y-1); ny /= cabs(ny);
+    complex_type pxny = ccwt_synchrosqueeze_derivative_quotient(ccwt, x+1, y-1); pxny /= cabs(pxny);
+    complex_type nx   = ccwt_synchrosqueeze_derivative_quotient(ccwt, x-1, y  ); nx /= cabs(nx);
+    complex_type derivative_quotient = ccwt_synchrosqueeze_derivative_quotient(ccwt, x  , y  );
+    complex_type px   = ccwt_synchrosqueeze_derivative_quotient(ccwt, x+1, y  ); px /= cabs(px);
+    complex_type nxpy = ccwt_synchrosqueeze_derivative_quotient(ccwt, x-1, y+1); nxpy /= cabs(nxpy);
+    complex_type py   = ccwt_synchrosqueeze_derivative_quotient(ccwt, x,   y+1); py /= cabs(py);
+    complex_type pxpy = ccwt_synchrosqueeze_derivative_quotient(ccwt, x+1, y+1);pxpy /= cabs(pxpy);
+    complex_type gx = nxny+nx*2.0+nxpy-pxny-px*2.0-pxpy;
+    complex_type gy = nxny+ny*2.0+pxny-nxpy-py*2.0-pxpy;
+    return cpow(gx + I * gy, strength/cabs(derivative_quotient)) * strength;
 }
 
 complex_type ccwt_synchrosqueeze_nearest_sample(struct ccwt_data* ccwt, unsigned int x, unsigned int y) {
     double strength = cabs(ccwt_synchrosqueeze_identity(ccwt, x, y));
     complex_type derivative_quotient = ccwt_synchrosqueeze_derivative_quotient(ccwt, x, y);
     x = (unsigned int)ccwt_clamp(x, ccwt->output_width, cimag(derivative_quotient) * strength);
-    y = (unsigned int)ccwt_clamp(y, ccwt->output_width, creal(derivative_quotient) * strength);
+    y = (unsigned int)ccwt_clamp(y, ccwt->height, creal(derivative_quotient) * strength);
     return ccwt_synchrosqueeze_identity(ccwt, x, y);
 }
 
 complex_type ccwt_synchrosqueeze_linear_sample(struct ccwt_data* ccwt, unsigned int x, unsigned int y) {
     double strength = cabs(ccwt_synchrosqueeze_identity(ccwt, x, y));
     complex_type derivative_quotient = ccwt_synchrosqueeze_derivative_quotient(ccwt, x, y);
-    double intX = ccwt_clamp(x, ccwt->output_width, cimag(derivative_quotient) * strength);
-    double intY = ccwt_clamp(y, ccwt->output_width, creal(derivative_quotient) * strength);
+    double intX = ccwt_clamp(x, ccwt->output_width-1, cimag(derivative_quotient) * strength);
+    double intY = ccwt_clamp(y, ccwt->height-1, creal(derivative_quotient) * strength);
     double fracX = modf(intX, &intX);
     double fracY = modf(intY, &intY);
     x = (unsigned int)intX;
@@ -109,9 +127,12 @@ int ccwt_render_png(struct ccwt_data* ccwt, FILE* file, unsigned char synchrosqu
             synchrosqueeze = ccwt_synchrosqueeze_derivative_quotient;
             break;
         case 2:
-            synchrosqueeze = ccwt_synchrosqueeze_nearest_sample;
+            synchrosqueeze = ccwt_synchrosqueeze_sobel;
             break;
         case 3:
+            synchrosqueeze = ccwt_synchrosqueeze_nearest_sample;
+            break;
+        case 4:
             synchrosqueeze = ccwt_synchrosqueeze_linear_sample;
             break;
     }
